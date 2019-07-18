@@ -11,11 +11,17 @@ class TasksController extends Controller
     // getでmessages/にアクセスされた場合の「一覧表示処理」
     public function index()
     {
-        $tasks = Task::all();
-
-        return view('tasks.index', [
-            'tasks' => $tasks,
-        ]);
+        $data = [];
+        if (\Auth::check()) {
+            $user = \Auth::user();
+            $tasks = $user->tasks()->orderBy('created_at', 'desc')->paginate(10);
+            
+            $data = [
+                'user' => $user,
+                'tasks' => $tasks,
+            ];
+        }
+        return view('welcome', $data);
     }
 
     // getでmessages/createにアクセスされた場合の「新規登録画面表示処理」
@@ -28,19 +34,21 @@ class TasksController extends Controller
         ]);
     }
 
-    // postでmessages/にアクセスされた場合の「新規登録処理」
     public function store(Request $request)
     {
         $this->validate($request, [
-            'status' => 'required|max:10',   // 追加
             'content' => 'required|max:191',
+            'status' => 'required|max:10',   // 追加
         ]);
-        
-        $task = new Task;
-        $task->status = $request->status;
-        $task->content = $request->content;
-        $task->save();
 
+        $request->user()->tasks()->create([
+            'content' => $request->content,
+            'status' => $request->status,
+        ]);
+
+        if (\Auth::id() === $task->user_id) {
+            return redirect('tasks');
+        }
         return redirect('/');
     }
 
@@ -48,10 +56,13 @@ class TasksController extends Controller
     public function show($id)
     {
         $task = Task::find($id);
-
-        return view('tasks.show', [
-            'task' => $task,
-        ]);
+        
+        if (\Auth::id() === $task->user_id) {
+            return view('tasks.show', [
+                'task' => $task,
+            ]);
+        }
+        return redirect('/');
     }
 
     // getでmessages/id/editにアクセスされた場合の「更新画面表示処理」
@@ -59,9 +70,16 @@ class TasksController extends Controller
     {
         $task = Task::find($id);
 
-        return view('tasks.edit', [
+        //ログイン中のID=投稿したID で削除
+        if (\Auth::id() === $task->user_id) {
+            return view('tasks.edit', [
             'task' => $task,
         ]);
+        }
+        
+        //↑にひっかからなかったら一覧に戻る
+        return redirect('/');
+        
     }
 
     // putまたはpatchでmessages/idにアクセスされた場合の「更新処理」
@@ -83,9 +101,14 @@ class TasksController extends Controller
     // deleteでmessages/idにアクセスされた場合の「削除処理」
     public function destroy($id)
     {
-        $task = Task::find($id);
-        $task->delete();
+        $task = \App\Task::find($id);
 
+        //ログイン中のID=投稿したID で削除
+        if (\Auth::id() === $task->user_id) {
+            $task->delete();
+        }
+        
+        //↑にひっかからなかったら一覧に戻る
         return redirect('/');
     }
 }
