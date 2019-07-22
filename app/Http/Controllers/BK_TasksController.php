@@ -112,12 +112,9 @@ class TasksController extends Controller
     {
         $task = Task::find($id);
 
-        if (\Auth::id() === $task->user_id) {
-            return view('tasks.edit', [
-                'task' => $task,
-            ]);
-        }
-        return redirect('/');
+        return view('tasks.edit', [
+            'task' => $task,
+        ]);
     }
 
     // putまたはpatchでmessages/idにアクセスされた場合の「更新処理」
@@ -129,13 +126,10 @@ class TasksController extends Controller
         ]);
         
         $task = Task::find($id);
+        $task->status = $request->status;
+        $task->content = $request->content;
+        $task->save();
         
-        if (\Auth::id() === $task->user_id) {
-            $task->status = $request->status;
-            $task->content = $request->content;
-            $task->save();
-        }
-        return redirect('/');
         /*
         return view('tasks.index', [
             'tasks' => $tasks,
